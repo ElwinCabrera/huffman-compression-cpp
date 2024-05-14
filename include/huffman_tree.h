@@ -11,6 +11,7 @@
 using std::unordered_map;
 using std::tuple;
 using std::vector;
+using std::tie;
 
 class Node{
 
@@ -37,10 +38,11 @@ public:
     void detach_node_from_list(Node *n);
     void print_list();
     void print_tree(Node *curr_head);
-    vector<tuple<char, uint64_t>> generate_huffman_codes();
-    void gen_huff_code_helper(Node *curr_head, uint64_t curr_code, uint8_t code);
-    void recreate_huffman_tree();
-    void recreate_huff_tree_helper(Node *curr, uint64_t code);
+    vector<tuple<char, uint8_t>> generate_huffman_codes();
+    void gen_huff_code_helper(Node *curr_head, uint8_t curr_code, uint8_t code);
+    void recreate_huffman_tree(vector<tuple<char, uint8_t>> codes);
+    void recreate_huff_tree_helper(Node *curr, char data, uint8_t code, uint8_t bit_idx);
+    uint8_t get_sig_digs_in_code(uint8_t code);
     void print_huff_codes();
     void free_tree(Node *curr_head);
     void free_list();
@@ -50,7 +52,7 @@ public:
 private:
     Node *head;
     Node *last;
-    vector<tuple<char, uint64_t>> huff_codes;
+    vector<tuple<char, uint8_t>> huff_codes;
 
 
 };

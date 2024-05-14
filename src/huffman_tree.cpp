@@ -29,6 +29,8 @@ void  HuffmanListTree::add_to_list(char c, int weight){
 
 void  HuffmanListTree::sort_list(){
 
+    //This is a very inefficient way of sorting but then again this function is never used 
+    // because sorting happens at new node insertion time
     Node *ptr1 = this->head;
     while(ptr1 != nullptr){
         Node *ptr2 = ptr1->next_in_list;
@@ -76,18 +78,18 @@ Node* HuffmanListTree::build_huffman_tree(){
 
         //this->head = next;
         
-        if(next == nullptr) {
-            //this->head = new_node;
-            printf("last node\n");
-        }
+        // if(next == nullptr) {
+        //     //this->head = new_node; //will cause infinite loop 
+        // }
 
-        this->insert_node_in_list(new_node);
-        curr = this->head;
+        curr = this->insert_node_in_list(new_node);
+        //curr = this->head;
 
     }
     return this->head;
 
 }
+
 Node* HuffmanListTree::insert_node_in_list(Node *new_node){ // make sure to do it in sorted order acending
     Node *curr = this->head;
     bool node_inserted = false;
@@ -140,6 +142,108 @@ void HuffmanListTree::detach_node_from_list(Node *n){
 }
 
 
+
+vector<tuple<char, uint8_t>> HuffmanListTree::generate_huffman_codes(){
+    //the length of the code is dependent on the dataset to encode and the depth of the tree
+    //for example if we are encoding the ASCII alphabet and its punctuations the dataset will not 
+    //exeed 255 or one byte and thus the maximum depth a tree can have is 255 thus the code will 
+    //not be bigger than 8 bits (aka one byte)
+
+    this->gen_huff_code_helper(this->head, 0, 0xFF);
+    //remove leading 1
+    for(int i =0; i < this->huff_codes.size(); ++i){
+        char c;
+        uint8_t code;
+        std::tie(c, code) = this->huff_codes.at(i);
+
+        tuple<char, uint8_t> t;
+    }
+
+    return this->huff_codes;
+
+}
+
+void HuffmanListTree::gen_huff_code_helper(Node *curr_head, uint8_t curr_code, uint8_t code){
+    if(curr_head == nullptr){
+        return;
+    }
+    if(code == 0xFF){//0xff means we are just starting 
+        //set a leading one to know when the code starts and ends, later we will ignore this 
+        //for example a huffman code of 000 is just 0 to th computer and we cant tell how many 
+        //zeros are needed to complete the hufman code for a given data point so I added a leading 
+        //1 that can be ignored to signal the start of a code.
+        curr_code= 1;
+        code = 0;
+    } else {
+        curr_code <<= 1;
+    }
+    
+    if(code == 1) curr_code |= 1;
+    if(!(curr_head->ignore_data)){
+        this->huff_codes.push_back({curr_head->data ,curr_code});
+    }
+    gen_huff_code_helper(curr_head->left_tree, curr_code, 0x0);
+    gen_huff_code_helper(curr_head->right_tree, curr_code, 0x1);
+}
+
+
+void HuffmanListTree::recreate_huffman_tree(vector<tuple<char, uint8_t>> codes){
+    this->huff_codes = codes;
+    this->head = new Node('\0', -1, true);
+
+    for(auto &hc: codes){
+        char c;
+        uint8_t code, code_norm, sig_dig;
+        tie(c, code) = hc;
+        sig_dig = get_sig_digs_in_code(code);
+        this->recreate_huff_tree_helper(this->head, c, code, 1 << (sig_dig - 1));
+    }
+    
+}
+void HuffmanListTree::recreate_huff_tree_helper(Node *curr, char data, uint8_t code, uint8_t bit_idx){
+    bool bit_set = code & bit_idx;
+
+    if(bit_idx == 1){
+        Node *leaf = new Node(data, code);
+        if(!(curr->left_tree) && !bit_set) curr->left_tree = leaf;
+        if(!(curr->right_tree) && bit_set) curr->right_tree = leaf;
+        return;
+    }
+
+    Node *n = new Node('\0', -1, true);
+    if(!bit_set){
+        if(!(curr->left_tree)) curr->left_tree = n;
+        this->recreate_huff_tree_helper(curr->left_tree, data, code, bit_idx>>1);
+    }
+    if(bit_set){
+        if(!(curr->right_tree)) curr->right_tree = n;
+        this->recreate_huff_tree_helper(curr->right_tree, data, code, bit_idx>>1);
+    }
+}
+
+uint8_t HuffmanListTree::get_sig_digs_in_code(uint8_t code){
+    uint8_t new_code = code, sig_dig = 0;
+    while(code){
+        code >>= 1;
+        sig_dig += 1;
+    }
+    //uint8_t leading_bit = 1 << (sig_dig - 1);
+    return sig_dig-1;  //minus the leading bit
+}
+
+
+
+void HuffmanListTree::print_huff_codes(){
+    printf("Printing Huffman Codes\n");
+    for(tuple<char, uint8_t> cc: this->huff_codes){
+        char c;
+        uint8_t code;
+        std::tie(c, code) = cc;
+        printf("<%c, %X>, ", c, code);
+    }
+    printf("\n");
+}
+
 void HuffmanListTree::print_list(){
 
     Node *curr = this->head;
@@ -162,63 +266,6 @@ void HuffmanListTree::print_tree(Node *curr_head){
     print_tree(curr_head->left_tree);
     print_tree(curr_head->right_tree);
     
-}
-
-vector<tuple<char, uint64_t>> HuffmanListTree::generate_huffman_codes(){
-
-    this->gen_huff_code_helper(this->head, 0, 0xFF);
-    //remove leading 1
-    for(int i =0; i < this->huff_codes.size(); ++i){
-        char c;
-        uint64_t code;
-        std::tie(c, code) = this->huff_codes.at(i);
-
-        tuple<char, uint64_t> t;
-    }
-
-    return this->huff_codes;
-
-}
-
-void HuffmanListTree::gen_huff_code_helper(Node *curr_head, uint64_t curr_code, uint8_t code){
-    if(curr_head == nullptr){
-        return;
-    }
-    if(code == 0xFF){
-        curr_code= 1;
-        code = 0;
-    } else {
-        curr_code <<= 1;
-    }
-    //int new_code = curr_code << 1;
-    
-    if(code == 1) curr_code |= 1;
-    if(!(curr_head->ignore_data)){
-        this->huff_codes.push_back({curr_head->data ,curr_code});
-    }
-    gen_huff_code_helper(curr_head->left_tree, curr_code, 0x0);
-    gen_huff_code_helper(curr_head->right_tree, curr_code, 0x1);
-}
-
-
-void HuffmanListTree::recreate_huffman_tree(){
-    Node *root = new Node('\0', -1, true);
-    this->head = root;
-    this->recreate_huff_tree_helper(root, 0);
-}
-void HuffmanListTree::recreate_huff_tree_helper(Node *curr, uint64_t code){
-
-}
-
-void HuffmanListTree::print_huff_codes(){
-    printf("Printing Huffman Codes\n");
-    for(tuple<char, uint64_t> cc: this->huff_codes){
-        char c;
-        uint64_t code;
-        std::tie(c, code) = cc;
-        printf("<%c, %X>, ", c, code);
-    }
-    printf("\n");
 }
 
 void HuffmanListTree::free_tree(Node *curr_head){

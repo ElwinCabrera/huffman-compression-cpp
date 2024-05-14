@@ -11,7 +11,16 @@ HuffmanCompress::HuffmanCompress(string s) {
 
 }
 
-uint8_t* HuffmanCompress::compress(){
+HuffmanCompress::HuffmanCompress() {
+    
+
+}
+
+// uint8_t* HuffmanCompress::get_huffman_codes(){
+
+// }
+
+uint8_t HuffmanCompress::compress(){
     this->find_char_freq();
     for(auto& [key, value] : this->char_to_freq){
         this->htree.add_to_list(key, value);
@@ -19,9 +28,9 @@ uint8_t* HuffmanCompress::compress(){
     this->htree.print_list();
 
     this->htree.build_huffman_tree();
-    //this->htree.print_tree(this->htree.get_head());
+    this->htree.print_tree(this->htree.get_head());
 
-    this->htree.generate_huffman_codes();
+    this->huff_codes = this->htree.generate_huffman_codes();
     this->htree.print_huff_codes();
 
     return 0;
@@ -39,7 +48,10 @@ void HuffmanCompress::find_char_freq(){
     }
 }
 
-string HuffmanCompress::decompress(){
+string HuffmanCompress::decompress(vector<tuple<char, uint8_t>> huff_codes, uint8_t *data){
+    this->htree.recreate_huffman_tree(huff_codes);
+    this->htree.print_tree(this->htree.get_head());
+    
     return "";
 }
 
@@ -63,8 +75,12 @@ int main(){
     string s2 = "A_DEAD_DAD_CEDED_A_BAD_BABE_A_BEADED_ABACA_BED";
 
     string s3 = "A_DEAD_DAD_CEDED_A_BAD_BABE";
-    HuffmanCompress hc(s1);
+    HuffmanCompress hc(s3);
     hc.compress();
+
+    HuffmanCompress hd;
+    uint8_t d[] = {0};
+    hd.decompress(hc.get_huffman_codes(), d);
     //initialize random seed
     // srand (time(NULL));
 
