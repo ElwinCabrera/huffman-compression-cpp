@@ -5,9 +5,8 @@ Node::Node(char data, int weight, bool ignore_data): data(data), weight(weight),
 
 
 
-HuffmanListTree::HuffmanListTree(): head(nullptr), last(nullptr){
+HuffmanListTree::HuffmanListTree(): head(nullptr), tree_depth(0) { }
 
-}
 
 HuffmanListTree::~HuffmanListTree(){
     if(!(this->head)) return;
@@ -27,76 +26,12 @@ void  HuffmanListTree::add_to_list(char c, int weight){
     this->insert_node_in_list(new Node(c, weight));
 }
 
-void  HuffmanListTree::sort_list(){
-
-    //This is a very inefficient way of sorting but then again this function is never used 
-    // because sorting happens at new node insertion time
-    Node *ptr1 = this->head;
-    while(ptr1 != nullptr){
-        Node *ptr2 = ptr1->next_in_list;
-        while(ptr2 != nullptr){
-            if(ptr2->weight < ptr1->weight){
-                //swap nodes
-                Node *ptr1_hold_next = ptr1->next_in_list;
-                Node *ptr1_hold_prev = ptr1->prev_in_list;
-
-                ptr1->next_in_list = ptr2->next_in_list;
-                ptr1->prev_in_list = ptr2->prev_in_list;
-
-                if(ptr2->next_in_list != nullptr) ptr2->next_in_list->prev_in_list = ptr1;
-                if(ptr2->prev_in_list != nullptr) ptr2->prev_in_list->next_in_list = ptr1;
-                if(ptr1_hold_next != nullptr) ptr1_hold_next->prev_in_list = ptr2;
-                if(ptr1_hold_prev != nullptr) ptr1_hold_prev->next_in_list = ptr2;
-
-
-                if(ptr1 == this->head) this->head = ptr2;
-                ptr2 = ptr1;
-            }
-            ptr2 = ptr2->next_in_list;
-        }
-        ptr1 = ptr1->next_in_list;
-    }
-    
-
-}
-
-Node* HuffmanListTree::build_huffman_tree(){
-
-    Node *curr = this->head;
-    while(curr != nullptr && curr->next_in_list != nullptr){
-        Node *left = curr;
-        Node *right = curr->next_in_list;
-        Node *next = curr->next_in_list->next_in_list;
-        this->detach_node_from_list(left);
-        this->detach_node_from_list(right);
-
-
-        Node *new_node = new Node('\0', left->weight + right->weight);
-        new_node->ignore_data = true;
-        new_node->left_tree = left;
-        new_node->right_tree = right;
-
-        //this->head = next;
-        
-        // if(next == nullptr) {
-        //     //this->head = new_node; //will cause infinite loop 
-        // }
-
-        curr = this->insert_node_in_list(new_node);
-        //curr = this->head;
-
-    }
-    return this->head;
-
-}
-
 Node* HuffmanListTree::insert_node_in_list(Node *new_node){ // make sure to do it in sorted order acending
     Node *curr = this->head;
     bool node_inserted = false;
     
     if(this->head == nullptr){
         this->head = new_node;
-        this->last = new_node;
         return this->head;
     }
     if(new_node->weight <= this->head->weight){
@@ -141,107 +76,36 @@ void HuffmanListTree::detach_node_from_list(Node *n){
     if(n == this->head) this->head = hold_next;
 }
 
+void  HuffmanListTree::sort_list(){
+
+    //This is a very inefficient way of sorting but then again this function is never used 
+    // because sorting happens at new node insertion time
+    Node *ptr1 = this->head;
+    while(ptr1 != nullptr){
+        Node *ptr2 = ptr1->next_in_list;
+        while(ptr2 != nullptr){
+            if(ptr2->weight < ptr1->weight){
+                //swap nodes
+                Node *ptr1_hold_next = ptr1->next_in_list;
+                Node *ptr1_hold_prev = ptr1->prev_in_list;
+
+                ptr1->next_in_list = ptr2->next_in_list;
+                ptr1->prev_in_list = ptr2->prev_in_list;
+
+                if(ptr2->next_in_list != nullptr) ptr2->next_in_list->prev_in_list = ptr1;
+                if(ptr2->prev_in_list != nullptr) ptr2->prev_in_list->next_in_list = ptr1;
+                if(ptr1_hold_next != nullptr) ptr1_hold_next->prev_in_list = ptr2;
+                if(ptr1_hold_prev != nullptr) ptr1_hold_prev->next_in_list = ptr2;
 
 
-vector<tuple<char, uint8_t>> HuffmanListTree::generate_huffman_codes(){
-    //the length of the code is dependent on the dataset to encode and the depth of the tree
-    //for example if we are encoding the ASCII alphabet and its punctuations the dataset will not 
-    //exeed 255 or one byte and thus the maximum depth a tree can have is 255 thus the code will 
-    //not be bigger than 8 bits (aka one byte)
-
-    this->gen_huff_code_helper(this->head, 0, 0xFF);
-    //remove leading 1
-    for(int i =0; i < this->huff_codes.size(); ++i){
-        char c;
-        uint8_t code;
-        std::tie(c, code) = this->huff_codes.at(i);
-
-        tuple<char, uint8_t> t;
-    }
-
-    return this->huff_codes;
-
-}
-
-void HuffmanListTree::gen_huff_code_helper(Node *curr_head, uint8_t curr_code, uint8_t code){
-    if(curr_head == nullptr){
-        return;
-    }
-    if(code == 0xFF){//0xff means we are just starting 
-        //set a leading one to know when the code starts and ends, later we will ignore this 
-        //for example a huffman code of 000 is just 0 to th computer and we cant tell how many 
-        //zeros are needed to complete the hufman code for a given data point so I added a leading 
-        //1 that can be ignored to signal the start of a code.
-        curr_code= 1;
-        code = 0;
-    } else {
-        curr_code <<= 1;
+                if(ptr1 == this->head) this->head = ptr2;
+                ptr2 = ptr1;
+            }
+            ptr2 = ptr2->next_in_list;
+        }
+        ptr1 = ptr1->next_in_list;
     }
     
-    if(code == 1) curr_code |= 1;
-    if(!(curr_head->ignore_data)){
-        this->huff_codes.push_back({curr_head->data ,curr_code});
-    }
-    gen_huff_code_helper(curr_head->left_tree, curr_code, 0x0);
-    gen_huff_code_helper(curr_head->right_tree, curr_code, 0x1);
-}
-
-
-void HuffmanListTree::recreate_huffman_tree(vector<tuple<char, uint8_t>> codes){
-    this->huff_codes = codes;
-    this->head = new Node('\0', -1, true);
-
-    for(auto &hc: codes){
-        char c;
-        uint8_t code, code_norm, sig_dig;
-        tie(c, code) = hc;
-        sig_dig = get_sig_digs_in_code(code);
-        this->recreate_huff_tree_helper(this->head, c, code, 1 << (sig_dig - 1));
-    }
-    
-}
-void HuffmanListTree::recreate_huff_tree_helper(Node *curr, char data, uint8_t code, uint8_t bit_idx){
-    bool bit_set = code & bit_idx;
-
-    if(bit_idx == 1){
-        Node *leaf = new Node(data, code);
-        if(!(curr->left_tree) && !bit_set) curr->left_tree = leaf;
-        if(!(curr->right_tree) && bit_set) curr->right_tree = leaf;
-        return;
-    }
-
-    Node *n = new Node('\0', -1, true);
-    if(!bit_set){
-        if(!(curr->left_tree)) curr->left_tree = n;
-        this->recreate_huff_tree_helper(curr->left_tree, data, code, bit_idx>>1);
-    }
-    if(bit_set){
-        if(!(curr->right_tree)) curr->right_tree = n;
-        this->recreate_huff_tree_helper(curr->right_tree, data, code, bit_idx>>1);
-    }
-}
-
-uint8_t HuffmanListTree::get_sig_digs_in_code(uint8_t code){
-    uint8_t new_code = code, sig_dig = 0;
-    while(code){
-        code >>= 1;
-        sig_dig += 1;
-    }
-    //uint8_t leading_bit = 1 << (sig_dig - 1);
-    return sig_dig-1;  //minus the leading bit
-}
-
-
-
-void HuffmanListTree::print_huff_codes(){
-    printf("Printing Huffman Codes\n");
-    for(tuple<char, uint8_t> cc: this->huff_codes){
-        char c;
-        uint8_t code;
-        std::tie(c, code) = cc;
-        printf("<%c, %X>, ", c, code);
-    }
-    printf("\n");
 }
 
 void HuffmanListTree::print_list(){
@@ -253,6 +117,83 @@ void HuffmanListTree::print_list(){
     }
     printf("\n");
 }
+
+void HuffmanListTree::free_list(){
+    while(this->head){
+        Node *new_head = this->head->next_in_list;
+        free(this->head);
+        this->head = new_head;
+    }
+    this->head = nullptr;
+}
+
+
+
+
+
+
+
+
+Node* HuffmanListTree::build_huffman_tree(){
+
+    Node *curr = this->head;
+    while(curr != nullptr && curr->next_in_list != nullptr){
+        Node *left = curr;
+        Node *right = curr->next_in_list;
+        Node *next = curr->next_in_list->next_in_list;
+        this->detach_node_from_list(left);
+        this->detach_node_from_list(right);
+
+
+        Node *new_node = new Node('\0', left->weight + right->weight);
+        new_node->ignore_data = true;
+        new_node->left_tree = left;
+        new_node->right_tree = right;
+
+        //this->head = next;
+        
+        // if(next == nullptr) {
+        //     //this->head = new_node; //will cause infinite loop 
+        // }
+
+        curr = this->insert_node_in_list(new_node);
+        //curr = this->head;
+
+    }
+    return this->head;
+
+}
+
+void HuffmanListTree::recreate_huffman_tree(unordered_map<char, BitSequence> codes){
+    this->huff_codes = codes;
+    this->head = new Node('\0', -1, true);
+
+    for(auto& [ch, code]: codes){
+        this->recreate_huff_tree_helper(this->head, ch, code, code.get_num_bits() - 1);
+    }
+    
+}
+void HuffmanListTree::recreate_huff_tree_helper(Node *curr, char data, BitSequence bit_sequence, uint8_t bit_idx){
+    bool bit_set = bit_sequence.get_bit(bit_idx);
+
+    if(bit_idx == 1){
+        Node *leaf = new Node(data, bit_sequence.get_byte(0));
+        if(!bit_set && !(curr->left_tree) ) curr->left_tree = leaf;
+        if(bit_set  && !(curr->right_tree) ) curr->right_tree = leaf;
+        return;
+    }
+
+    Node *n = new Node('\0', -1, true);
+    if(!bit_set){
+        if(!(curr->left_tree)) curr->left_tree = n;
+        this->recreate_huff_tree_helper(curr->left_tree, data, bit_sequence, --bit_idx);
+    }
+    if(bit_set){
+        if(!(curr->right_tree)) curr->right_tree = n;
+        this->recreate_huff_tree_helper(curr->right_tree, data, bit_sequence, --bit_idx);
+    }
+}
+
 
 void HuffmanListTree::print_tree(Node *curr_head){
     if(curr_head == nullptr){
@@ -279,11 +220,59 @@ void HuffmanListTree::free_tree(Node *curr_head){
 }
 
 
-void HuffmanListTree::free_list(){
-    while(this->head){
-        Node *new_head = this->head->next_in_list;
-        free(this->head);
-        this->head = new_head;
+
+
+
+
+
+
+
+unordered_map<char, BitSequence> HuffmanListTree::generate_huffman_codes(){
+    //the length of the code is dependent on the dataset to encode and the depth of the tree
+    //for example if we are encoding the ASCII alphabet and its punctuations the dataset will not 
+    //exeed 255 or one byte and thus the maximum depth a tree can have is 255 thus the code will 
+    //not be bigger than 8 bits (aka one byte)
+
+    this->gen_huff_code_helper(this->head, 0, 0, false);
+    //remove leading 1
+    for(auto& [ch, code]: this->huff_codes){
+        //do something, idk yet
     }
-    this->head = nullptr;
+
+    return this->huff_codes;
+
 }
+
+void HuffmanListTree::gen_huff_code_helper(Node *curr_head, uint8_t depth, uint8_t curr_code, bool set){
+    if(curr_head == nullptr){
+        return;
+    }
+
+    if(depth > this->tree_depth) this->tree_depth = depth;
+    curr_code <<= 1;
+    if(set) curr_code |= 1;
+
+    if(!(curr_head->ignore_data)){
+        uint8_t tmp_code = curr_code, idx = 0;
+        BitSequence bs(depth);
+        while(tmp_code){
+            bs.set_bit(idx++, tmp_code & 0x1);
+            tmp_code >> 1;
+        }
+        this->huff_codes[curr_head->data] = bs;
+    }
+    gen_huff_code_helper(curr_head->left_tree,  depth+1, curr_code, false);
+    gen_huff_code_helper(curr_head->right_tree, depth+1, curr_code, true);
+}
+
+void HuffmanListTree::print_huff_codes(){
+    printf("Printing Huffman Codes\n");
+    for(auto& [ch, code]: this->huff_codes){
+        printf("<%c, %X>, ", ch, code.get_byte(0));
+    }
+    printf("\n");
+}
+
+
+
+

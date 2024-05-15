@@ -5,13 +5,14 @@
 #include <cstdio>
 #include <vector>
 #include <unordered_map>
+//#include <map>
 #include <tuple>
 #include <cstdint>
 
+#include "bits.h"
+
 using std::unordered_map;
-using std::tuple;
-using std::vector;
-using std::tie;
+//using std::map;
 
 class Node{
 
@@ -27,32 +28,37 @@ public:
     bool ignore_data;
 };
 
-class HuffmanListTree{
+class HuffmanListTree {
 public:
     HuffmanListTree();
     ~HuffmanListTree();
-    void  add_to_list(char c, int weight);
-    void  sort_list();
-    Node* build_huffman_tree();
+
+    void add_to_list(char c, int weight);
     Node* insert_node_in_list(Node *node); // make sure to do it in sorted order decending
     void detach_node_from_list(Node *n);
+    void sort_list();
     void print_list();
-    void print_tree(Node *curr_head);
-    vector<tuple<char, uint8_t>> generate_huffman_codes();
-    void gen_huff_code_helper(Node *curr_head, uint8_t curr_code, uint8_t code);
-    void recreate_huffman_tree(vector<tuple<char, uint8_t>> codes);
-    void recreate_huff_tree_helper(Node *curr, char data, uint8_t code, uint8_t bit_idx);
-    uint8_t get_sig_digs_in_code(uint8_t code);
-    void print_huff_codes();
-    void free_tree(Node *curr_head);
     void free_list();
+
+    Node* build_huffman_tree();
+    void recreate_huffman_tree(unordered_map<char, BitSequence> codes);
+    void recreate_huff_tree_helper(Node *curr, char data, BitSequence bit_sequence, uint8_t bit_idx);
+    void print_tree(Node *curr_head);
+    void free_tree(Node *curr_head);
+
+    unordered_map<char, BitSequence> generate_huffman_codes();
+    void gen_huff_code_helper(Node *curr_head, uint8_t depth, uint8_t curr_code, bool set);
+    void print_huff_codes();
+    uint8_t get_sig_digs_in_code(uint8_t code);
+
+    
+    
     Node* get_head() {return this->head;}
    
-
 private:
     Node *head;
-    Node *last;
-    vector<tuple<char, uint8_t>> huff_codes;
+    unordered_map<char, BitSequence> huff_codes;
+    size_t tree_depth;
 
 
 };
