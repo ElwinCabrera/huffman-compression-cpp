@@ -173,11 +173,11 @@ void HuffmanListTree::recreate_huffman_tree(unordered_map<char, BitSequence> cod
     }
     
 }
-void HuffmanListTree::recreate_huff_tree_helper(Node *curr, char data, BitSequence bit_sequence, uint8_t bit_idx){
+void HuffmanListTree::recreate_huff_tree_helper(Node *curr, char data, BitSequence bit_sequence, uint64_t bit_idx){
     bool bit_set = bit_sequence.get_bit(bit_idx);
 
     if(bit_idx == 1){
-        Node *leaf = new Node(data, bit_sequence.get_byte(0));
+        Node *leaf = new Node(data, bit_sequence.get_x_bytes(8));
         if(!bit_set && !(curr->left_tree) ) curr->left_tree = leaf;
         if(bit_set  && !(curr->right_tree) ) curr->right_tree = leaf;
         return;
@@ -234,33 +234,38 @@ unordered_map<char, BitSequence> HuffmanListTree::generate_huffman_codes(){
     //not be bigger than 8 bits (aka one byte)
 
     this->gen_huff_code_helper(this->head, 0, 0, false);
-    //remove leading 1
-    for(auto& [ch, code]: this->huff_codes){
-        //do something, idk yet
-    }
 
     return this->huff_codes;
 
 }
 
-void HuffmanListTree::gen_huff_code_helper(Node *curr_head, uint8_t depth, uint8_t curr_code, bool set){
+void HuffmanListTree::gen_huff_code_helper(Node *curr_head, uint64_t depth, uint64_t curr_code, bool set){
     if(curr_head == nullptr){
         return;
     }
 
-    if(depth > this->tree_depth) this->tree_depth = depth;
+    
     curr_code <<= 1;
     if(set) curr_code |= 1;
 
-    if(!(curr_head->ignore_data)){
-        uint8_t tmp_code = curr_code, idx = 0;
-        BitSequence bs(depth);
-        while(tmp_code){
-            bs.set_bit(idx++, tmp_code & 0x1);
-            tmp_code >> 1;
-        }
-        this->huff_codes[curr_head->data] = bs;
+    if(this->huff_codes.find(curr_head->data) != this->huff_codes.end()){
+        printf("woops we accidentally visited same data twice\n");
     }
+
+    if(depth > this->tree_depth) this->tree_depth = depth;
+
+    if(!(curr_head->ignore_data)){
+        uint64_t tmp_code = curr_code;
+        int idx = depth - 1;
+
+        BitSequence bit_seq(depth);
+        while(idx >= 0 && tmp_code){
+            bit_seq.set_bit(idx--, tmp_code & 0x1);
+            tmp_code >>= 1;
+        }
+        this->huff_codes[curr_head->data] = bit_seq;
+    }
+
     gen_huff_code_helper(curr_head->left_tree,  depth+1, curr_code, false);
     gen_huff_code_helper(curr_head->right_tree, depth+1, curr_code, true);
 }
@@ -268,7 +273,13 @@ void HuffmanListTree::gen_huff_code_helper(Node *curr_head, uint8_t depth, uint8
 void HuffmanListTree::print_huff_codes(){
     printf("Printing Huffman Codes\n");
     for(auto& [ch, code]: this->huff_codes){
-        printf("<%c, %X>, ", ch, code.get_byte(0));
+        uint64_t cd = code.get_x_bytes(8);
+        if(cd == 0){
+            printf("<%c, %X(x%d)>, ", ch, cd, code.get_num_bits());
+        } else {
+            printf("<%c, %X>, ", ch, cd);
+        }
+        
     }
     printf("\n");
 }

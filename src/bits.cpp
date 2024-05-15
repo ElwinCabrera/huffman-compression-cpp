@@ -13,6 +13,7 @@ BitSequence::~BitSequence() {
 
 void BitSequence::set_bit(size_t bit_idx, bool set) {
     if(bit_idx < 0 || bit_idx >= this->num_bits){
+        printf("set_bit idx out of bounds\n");
         return;
     }
     size_t byte_idx = bit_idx / BYTE_LEN;
@@ -38,5 +39,22 @@ bool BitSequence::get_bit(size_t bit_idx) {
 }
 
 uint8_t BitSequence::get_byte(size_t byte_idx) {
+    if(byte_idx < 0 || byte_idx >= this->bytes_allocated){
+        printf("get_byte idx out of bounds\n");
+        return false;
+    }
     return (this->data.get())[byte_idx];
+}
+
+uint64_t BitSequence::get_x_bytes(uint8_t num_bytes){
+    uint64_t res = 0;
+    if(num_bytes > this->bytes_allocated) num_bytes = this->bytes_allocated;
+    uint8_t byte_idx = 0;
+    while(num_bytes){
+        res <<= BYTE_LEN;
+        res |= this->get_byte(num_bytes - 1);
+        
+        --num_bytes;
+    }
+    return res;
 }

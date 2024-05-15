@@ -42,14 +42,14 @@ public:
 
     Node* build_huffman_tree();
     void recreate_huffman_tree(unordered_map<char, BitSequence> codes);
-    void recreate_huff_tree_helper(Node *curr, char data, BitSequence bit_sequence, uint8_t bit_idx);
+    void recreate_huff_tree_helper(Node *curr, char data, BitSequence bit_sequence, uint64_t bit_idx);
+    
     void print_tree(Node *curr_head);
     void free_tree(Node *curr_head);
 
     unordered_map<char, BitSequence> generate_huffman_codes();
-    void gen_huff_code_helper(Node *curr_head, uint8_t depth, uint8_t curr_code, bool set);
+    void gen_huff_code_helper(Node *curr_head, uint64_t depth, uint64_t curr_code, bool set);
     void print_huff_codes();
-    uint8_t get_sig_digs_in_code(uint8_t code);
 
     
     

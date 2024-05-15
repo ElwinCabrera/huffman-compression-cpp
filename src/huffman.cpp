@@ -7,9 +7,13 @@
 
 
 HuffmanCompress::HuffmanCompress(string s) {
-    this->string_to_compress = s;
-    
-    this->num_bits_in_str = s.size() * BYTE_LEN;
+    this->uncompressed_str = s;
+    this->uncompressed_str_bit_len = s.size() * BYTE_LEN;
+
+    this->huff_code_bit_len = 0;
+    this->serialized_huff_code_bit_len = 0;
+    this->compressed_str_bit_len = 0;
+    this->compressed_total_bit_len = 0;
 }
 
 HuffmanCompress::HuffmanCompress() {
@@ -19,11 +23,9 @@ HuffmanCompress::~HuffmanCompress() {
     
 
 }
-// uint8_t* HuffmanCompress::get_huffman_codes(){
 
-// }
 
-BitSequence HuffmanCompress::compress(){
+uint8_t* HuffmanCompress::compress(){
     this->find_char_freq();
 
     for(auto& [key, value] : this->char_to_freq){
@@ -41,49 +43,46 @@ BitSequence HuffmanCompress::compress(){
 
     //This part is very slopy but whatever need to quickly test and will optimize later
 
-    //I created a BitSequence class because a code can be all zeros and each zero is significant 
-    //Also, I wanted to represent my huff codes all in binary to seve bandwwith when sending over network 
-    //however since each data point uses variable length bit sequences and a data point can be like 
-    // "0001" and another "001" it creates ambiguity on the reveiving end as to how to interpret the bit sequence
-    //so unfourtunatly the huffman codes will need to be serialized as string increasing the number of bits to send
-    //this is only done for the huffman codes and not the actual data as the reveiving end needs to know how to reconstruct the 
-    // original tree
+    this->serialized_huff_codes = this->serialize_huff_codes();
+    this->serialized_huff_code_bit_len = this->serialized_huff_codes.size() * BYTE_LEN;
 
-    // size_t huff_code_bit_len = (this->huff_codes.size() * 2) * BYTE_LEN;
-    // this->num_bits_in_huff_code = huff_code_bit_len;
+    this->compressed_str_bit_len = 0;
+    for(char ch: this->uncompressed_str){
+        this->compressed_str_bit_len += this->huff_codes[ch].get_num_bits();
+    }
 
+    
 
-    // this->num_bits_in_compressed_str = 0;
-    // for(char ch: this->string_to_compress){
-    //     this->num_bits_in_compressed_str += this->huff_codes[ch].get_num_bits();
-    // }
+    this->compressed_str_bitsequence = BitSequence(this->compressed_str_bit_len);
+    size_t bit_idx = 0;
+    for(char ch: this->uncompressed_str){
+        BitSequence huff_cd = this->huff_codes[ch];
+        int hcode_bit_idx = huff_cd.get_num_bits() - 1;
+        while(hcode_bit_idx >= 0) {
+            bool set = huff_cd.get_bit(hcode_bit_idx);
+            this->compressed_str_bitsequence.set_bit(bit_idx, set);
+            --hcode_bit_idx;
+            ++bit_idx;
+        }
+    }
 
-    // this->compressed_bitsequence = BitSequence(this->num_bits_in_huff_code + this->num_bits_in_compressed_str);
+    size_t total_bytes = this->serialized_huff_codes.size() + this->compressed_str_bitsequence.get_bytes_allocated();
+    this->compressed_total_bit_len = total_bytes * BYTE_LEN;
 
-    // size_t bit_idx = 0;
+    this->compressed_data = (uint8_t*) malloc(total_bytes );
 
-    // for(auto& [ch, code] : this->huff_codes){
-        
-    // }
+    uint8_t *tmp_ptr = this->compressed_data;
+    memcpy(tmp_ptr, this->serialized_huff_codes.data(), this->serialized_huff_codes.size());
+    tmp_ptr += this->serialized_huff_codes.size();
+    memcpy(tmp_ptr, this->compressed_str_bitsequence.get_data(), this->compressed_str_bitsequence.get_bytes_allocated());
 
-    // //size_t bit_idx = this->num_bits_in_huff_code;
-
-    // for(char ch: this->string_to_compress){
-    //     BitSequence huff_cd = this->huff_codes[ch];
-    //     size_t ch_code_bit_idx = huff_cd.get_num_bits() - 1;
-    //     while(ch_code_bit_idx >= 0) {
-    //         this->compressed_bitsequence.set_bit(bit_idx++, huff_cd.get_bit(ch_code_bit_idx))
-    //         --ch_code_bit_idx;
-    //     }
-    // }
-
-    return this->compressed_bitsequence;
+    return this->compressed_data;
 
 }
 
 
 void HuffmanCompress::find_char_freq(){
-    for(char c: this->string_to_compress){
+    for(char c: this->uncompressed_str){
         if(this->char_to_freq.find(c) != this->char_to_freq.end()){
             this->char_to_freq[c] = this->char_to_freq[c] + 1;
         } else {
@@ -92,14 +91,58 @@ void HuffmanCompress::find_char_freq(){
     }
 }
 
-string HuffmanCompress::decompress(unordered_map<char, BitSequence> huff_codes){
-    this->htree.recreate_huffman_tree(huff_codes);
-    //this->htree.print_tree(this->htree.get_head());
-    
-    return "";
+
+string HuffmanCompress::decompress(uint8_t *data){
+    string res = "";
+    this->huff_codes = this->deserialize_huff_codes(data);
+    this->htree.recreate_huffman_tree(this->huff_codes);
+
+    return res;
 }
 
 
+
+
+
+string HuffmanCompress::serialize_huff_codes(){
+    //unfourunatly will have to serialize as string
+    // <char><bit_length><bit#5><bit#4><bit# ..>
+    string res = "";
+    for(auto& [ch, code]: this->huff_codes){
+        res += ch;
+        res += to_string(code.get_num_bits());
+        int idx = code.get_num_bits() - 1;
+        while(idx >= 0){
+            if(code.get_bit(idx--)){
+                res += "1";
+            } else {
+                res += "0";
+            }
+        }
+    }
+
+    return res;
+}
+
+unordered_map<char, BitSequence> HuffmanCompress::deserialize_huff_codes(uint8_t *data){
+    unordered_map<char, BitSequence> res;
+    uint8_t huff_code_len = *data++;
+    while(huff_code_len > 0) {
+        char ch = *data++;
+        uint8_t seq_len = *data++;
+        BitSequence bit_seq(seq_len);
+        uint64_t idx = seq_len - 1;
+        while(seq_len > 0){
+            if(*data == '1') bit_seq.set_bit(idx--, true);
+            if(*data == '0') bit_seq.set_bit(idx--, false);
+            ++data;
+            --seq_len;
+        }
+        res[ch] = bit_seq;
+    }
+
+    return res;
+}
 
 void HuffmanCompress::print_map(){
     for (auto& [key, value] : this->char_to_freq){
@@ -107,25 +150,47 @@ void HuffmanCompress::print_map(){
     }
     cout << '\n';
 }
- 
+
+void HuffmanCompress::print_stats(){
+    size_t compressed_byte_len = this->compressed_total_bit_len / BYTE_LEN;
+    size_t compressed_data_byte_len = this->compressed_str_bit_len / BYTE_LEN;
+
+    if(this->compressed_total_bit_len % BYTE_LEN != 0) compressed_byte_len += 1;
+    if(this->compressed_str_bit_len % BYTE_LEN != 0) compressed_data_byte_len += 1;
+
+    printf("\nUncompressed: %d(=%d bytes)\n", this->uncompressed_str_bit_len, this->uncompressed_str_bit_len/ BYTE_LEN);
+    printf("Compressed: %d(=%d bytes)\n", this->compressed_total_bit_len, compressed_byte_len);
+    printf("\tSerialized Huff Code: %d(=%d bytes)\n",this->serialized_huff_code_bit_len, this->serialized_huff_code_bit_len/BYTE_LEN);
+    printf("\tData: %d(=%d bytes)\n", this->compressed_str_bit_len, compressed_data_byte_len);
+
+    int diff_bits = this->uncompressed_str_bit_len - this->compressed_total_bit_len;
+    int diff_bytes = diff_bits / BYTE_LEN;
+    if(diff_bits % BYTE_LEN != 0) diff_bytes += 1;
+
+    printf("Saved/Gained by compressing: %d(=%d bytes)\n",diff_bits, diff_bytes);
+    
+   
+}
 
 
 
 int main(){
-
-    
 
     string s1 = "this is an example of a huffman tree";
     string s2 = "A_DEAD_DAD_CEDED_A_BAD_BABE_A_BEADED_ABACA_BED";
 
     string s3 = "A_DEAD_DAD_CEDED_A_BAD_BABE";
 
-    HuffmanCompress hc(s3);
-    hc.compress();
+    string really_long = "In computer science and information theory, a Huffman code is a particular type of optimal prefix code that is commonly used for lossless data compression. The process of finding or using such a code is Huffman coding, an algorithm developed by David A. Huffman while he was a Sc.D. student at MIT, and published in the 1952 paper A Method for the Construction of Minimum-Redundancy Codes.[1] The output from Huffman's algorithm can be viewed as a variable-length code table for encoding a source symbol (such as a character in a file). The algorithm derives this table from the estimated probability or frequency of occurrence (weight) for each possible value of the source symbol. As in other entropy encoding methods, more common symbols are generally represented using fewer bits than less common symbols. Huffman's method can be efficiently implemented, finding a code in time linear to the number of input weights if these weights are sorted.[2] However, although optimal among methods encoding symbols separately, Huffman coding is not always optimal among all compression methods - it is replaced with arithmetic coding[3] or asymmetric numeral systems[4] if a better compression ratio is required. History In 1951, David A. Huffman and his MIT information theory classmates were given the choice of a term paper or a final exam. The professor, Robert M. Fano, assigned a term paper on the problem of finding the most efficient binary code. Huffman, unable to prove any codes were the most efficient, was about to give up and start studying for the final when he hit upon the idea of using a frequency-sorted binary tree and quickly proved this method the most efficient.[5] In doing so, Huffman outdid Fano, who had worked with Claude Shannon to develop a similar code. Building the tree from the bottom up guaranteed optimality, unlike the top-down approach of Shannon–Fano coding. Terminology Huffman coding uses a specific method for choosing the representation for each symbol, resulting in a prefix code (sometimes called prefix-free codes, that is, the bit string representing some particular symbol is never a prefix of the bit string representing any other symbol). Huffman coding is such a widespread method for creating prefix codes that the term Huffman code is widely used as a synonym for prefix code even when such a code is not produced by Huffman's algorithm. Compression Visualisation of the use of Huffman coding to encode the message A_DEAD_DAD_CEDED_A_BAD_BABE_A_BEADED_ABACA_BED. In steps 2 to 6, the letters are sorted by increasing frequency, and the least frequent two at each step are combined and reinserted into the list, and a partial tree is constructed. The final tree in step 6 is traversed to generate the dictionary in step 7. Step 8 uses it to encode the message. A source generates 4 different symbols { a 1 , a 2 , a 3 , a 4 } {a_{1},a_{2},a_{3},a_{4}}} with probability { 0.4 ; 0.35 ; 0.2 ; 0.05 } {0.4;0.35;0.2;0.05}. A binary tree is generated from left to right taking the two least probable symbols and putting them together to form another equivalent symbol having a probability that equals the sum of the two symbols. The process is repeated until there is just one symbol. The tree can then be read backwards, from right to left, assigning different bits to different branches. The final Huffman code is: Symbol 	Code a1 	0 a2 	10 a3 	110 a4 	111 The standard way to represent a signal made of 4 symbols is by using 2 bits/symbol, but the entropy of the source is 1.74 bits/symbol. If this Huffman code is used to represent the signal, then the average length is lowered to 1.85 bits/symbol; it is still far from the theoretical limit because the probabilities of the symbols are different from negative powers of two. The technique works by creating a binary tree of nodes. These can be stored in a regular array, the size of which depends on the number of symbols, n . A node can be either a leaf node or an internal node. Initially, all nodes are leaf nodes, which contain the symbol itself, the weight (frequency of appearance) of the symbol and optionally, a link to a parent node which makes it easy to read the code (in reverse) starting from a leaf node. Internal nodes contain a weight, links to two child nodes and an optional link to a parent node. As a common convention, bit '0' represents following the left child and bit '1' represents following the right child. A finished tree has up to n  leaf nodes and n − 1  internal nodes. A Huffman tree that omits unused symbols produces the most optimal code lengths. The process begins with the leaf nodes containing the probabilities of the symbol they represent. Then, the process takes the two nodes with smallest probability, and creates a new internal node having these two nodes as children. The weight of the new node is set to the sum of the weight of the children. We then apply the process again, on the new internal node and on the remaining nodes (i.e., we exclude the two leaf nodes), we repeat this process until only one node remains, which is the root of the Huffman tree. The simplest construction algorithm uses a priority queue where the node with lowest probability is given highest priority: Create a leaf node for each symbol and add it to the priority queue. While there is more than one node in the queue: Remove the two nodes of highest priority (lowest probability) from the queue Create a new internal node with these two nodes as children and with probability equal to the sum of the two nodes' probabilities. Add the new node to the queue. The remaining node is the root node and the tree is complete. Since efficient priority queue data structures require O(log n) time per insertion, and a tree with n leaves has 2n−1 nodes, this algorithm operates in O(n log n) time, where n is the number of symbols. If the symbols are sorted by probability, there is a linear-time (O(n)) method to create a Huffman tree using two queues, the first one containing the initial weights (along with pointers to the associated leaves), and combined weights (along with pointers to the trees) being put in the back of the second queue. This assures that the lowest weight is always kept at the front of one of the two queues: Start with as many leaves as there are symbols. Enqueue all leaf nodes into the first queue (by probability in increasing order so that the least likely item is in the head of the queue). While there is more than one node in the queues: Dequeue the two nodes with the lowest weight by examining the fronts of both queues. Create a new internal node, with the two just-removed nodes as children (either node can be either child) and the sum of their weights as the new weight. Enqueue the new node into the rear of the second queue. The remaining node is the root node; the tree has now been generated. Once the Huffman tree has been generated, it is traversed to generate a dictionary which maps the symbols to binary codes as follows: Start with current node set to the root. If node is not a leaf node, label the edge to the left child as 0 and the edge to the right child as 1. Repeat the process at both the left child and the right child. The final encoding of any symbol is then read by a concatenation of the labels on the edges along the path from the root node to the symbol. In many cases, time complexity is not very important in the choice of algorithm here, since n here is the number of symbols in the alphabet, which is typically a very small number (compared to the length of the message to be encoded); whereas complexity analysis concerns the behavior when n grows to be very large. It is generally beneficial to minimize the variance of codeword length. For example, a communication buffer receiving Huffman-encoded data may need to be larger to deal with especially long symbols if the tree is especially unbalanced. To minimize variance, simply break ties between queues by choosing the item in the first queue. This modification will retain the mathematical optimality of the Huffman coding while both minimizing variance and minimizing the length of the longest character code. Decompression Generally speaking, the process of decompression is simply a matter of translating the stream of prefix codes to individual byte values, usually by traversing the Huffman tree node by node as each bit is read from the input stream (reaching a leaf node necessarily terminates the search for that particular byte value). Before this can take place, however, the Huffman tree must be somehow reconstructed. In the simplest case, where character frequencies are fairly predictable, the tree can be preconstructed (and even statistically adjusted on each compression cycle) and thus reused every time, at the expense of at least some measure of compression efficiency. Otherwise, the information to reconstruct the tree must be sent a priori. A naive approach might be to prepend the frequency count of each character to the compression stream. Unfortunately, the overhead in such a case could amount to several kilobytes, so this method has little practical use. If the data is compressed using canonical encoding, the compression model can be precisely reconstructed with just B ⋅ 2 B * 2^B bits of information (where B is the number of bits per symbol). Another method is to simply prepend the Huffman tree, bit by bit, to the output stream. For example, assuming that the value of 0 represents a parent node and 1 a leaf node, whenever the latter is encountered the tree building routine simply reads the next 8 bits to determine the character value of that particular leaf. The process continues recursively until the last leaf node is reached; at that point, the Huffman tree will thus be faithfully reconstructed. The overhead using such a method ranges from roughly 2 to 320 bytes (assuming an 8-bit alphabet). Many other techniques are possible as well. In any case, since the compressed data can include unused trailing bits the decompressor must be able to determine when to stop producing output. This can be accomplished by either transmitting the length of the decompressed data along with the compression model or by defining a special code symbol to signify the end of input (the latter method can adversely affect code length optimality, however). ";
 
-    HuffmanCompress hd;
+
+    HuffmanCompress hc(really_long);
+    hc.compress();
+    hc.print_stats();
+
+    // HuffmanCompress hd;
   
-    hd.decompress(hc.get_huffman_codes());
+    // hd.decompress(hc.get_huffman_codes());
 
 
     //TODO: fix overflow issue. max huff code is 0xff (= max tree depth of 8) if we use our leading bit technique we will have an overflow in the following test.
