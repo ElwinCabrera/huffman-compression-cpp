@@ -156,8 +156,8 @@ int hex_str_to_num(string hex_str){
     int idx = hex_str.size() - 1;
     while(idx >= 0){
         char c = hex_str.at(idx);
-        if(isdigit(c)) num += (c - '0') * pow(16, idx);
-        else num += ((c - 'A') + 10) * pow(16, idx);
+        if(isdigit(c)) num += (c - '0') * pow(16, hex_str.size() - idx - 1);
+        else num += ((c - 'A') + 10) * pow(16, hex_str.size() - idx - 1);
         --idx;
     }
     return num;

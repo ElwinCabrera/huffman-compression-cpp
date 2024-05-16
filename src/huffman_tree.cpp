@@ -215,7 +215,7 @@ uint8_t* HuffmanListTree::decode_bit_seq(BitSequence bit_sequence){
 }
 
 void HuffmanListTree::decode_bit_seq_helper(Node* curr, uint8_t *buff, BitSequence *bit_sequence){
-    if(!curr || bit_sequence->get_next_bit_idx() >= bit_sequence->get_num_bits()){
+    if(!curr || bit_sequence->get_next_bit_idx() > bit_sequence->get_num_bits()){
         return;
     }
     if(!(curr->ignore_data)){
@@ -231,7 +231,7 @@ void HuffmanListTree::decode_bit_seq_helper(Node* curr, uint8_t *buff, BitSequen
 }
 
 int HuffmanListTree::find_data_len_from_bit_seq(Node* curr, int count, BitSequence *bit_sequence){
-    if(!curr || bit_sequence->get_next_bit_idx() >= bit_sequence->get_num_bits()){
+    if(!curr || bit_sequence->get_next_bit_idx() > bit_sequence->get_num_bits()){
         return count;
     }
     if(!(curr->ignore_data)){
