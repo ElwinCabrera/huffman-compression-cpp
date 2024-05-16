@@ -176,7 +176,7 @@ void HuffmanListTree::recreate_huffman_tree(unordered_map<char, BitSequence> cod
 void HuffmanListTree::recreate_huff_tree_helper(Node *curr, char data, BitSequence bit_sequence, uint64_t bit_idx){
     bool bit_set = bit_sequence.get_bit(bit_idx);
 
-    if(bit_idx == 1){
+    if(bit_idx == 0){
         Node *leaf = new Node(data, bit_sequence.get_x_bytes(8));
         if(!bit_set && !(curr->left_tree) ) curr->left_tree = leaf;
         if(bit_set  && !(curr->right_tree) ) curr->right_tree = leaf;
@@ -193,6 +193,61 @@ void HuffmanListTree::recreate_huff_tree_helper(Node *curr, char data, BitSequen
         this->recreate_huff_tree_helper(curr->right_tree, data, bit_sequence, --bit_idx);
     }
 }
+
+
+uint8_t* HuffmanListTree::decode_bit_seq(BitSequence bit_sequence){
+    uint8_t *data = nullptr;
+
+    //there might be a better way of finding the length 
+    //(we could use a 'string' instead of 'uint8_t*' which will dynamically allocates more space for us)
+    //but for now this will do
+    bit_sequence.get_next_bit_start(0);
+    int data_len = this->find_data_len_from_bit_seq(this->head, 0, &bit_sequence);
+
+    data = (uint8_t*) malloc(data_len + 1);
+    memset(data, '\0', data_len);
+
+    uint8_t *data_ptr = data;
+    bit_sequence.get_next_bit_start(0);
+    this->decode_bit_seq_helper(this->head, data_ptr, &bit_sequence);
+
+    return data;
+}
+
+void HuffmanListTree::decode_bit_seq_helper(Node* curr, uint8_t *buff, BitSequence *bit_sequence){
+    if(!curr || bit_sequence->get_next_bit_idx() >= bit_sequence->get_num_bits()){
+        return;
+    }
+    if(!(curr->ignore_data)){
+        *buff++ = (uint8_t) curr->data;
+        curr = this->head;
+    }
+    bool bit_set = bit_sequence->get_next_bit();
+    if(!bit_set){
+        this->decode_bit_seq_helper(curr->left_tree, buff, bit_sequence);
+    } else{
+        this->decode_bit_seq_helper(curr->right_tree, buff, bit_sequence);
+    }
+}
+
+int HuffmanListTree::find_data_len_from_bit_seq(Node* curr, int count, BitSequence *bit_sequence){
+    if(!curr || bit_sequence->get_next_bit_idx() >= bit_sequence->get_num_bits()){
+        return count;
+    }
+    if(!(curr->ignore_data)){
+        count += 1;
+        curr = this->head;
+    }
+    bool bit_set = bit_sequence->get_next_bit();
+    if(!bit_set){
+        count = this->find_data_len_from_bit_seq(curr->left_tree, count, bit_sequence);
+    } else{
+        count = this->find_data_len_from_bit_seq(curr->right_tree, count, bit_sequence);
+    }
+
+    return count;
+}
+
 
 
 void HuffmanListTree::print_tree(Node *curr_head){
@@ -259,10 +314,8 @@ void HuffmanListTree::gen_huff_code_helper(Node *curr_head, uint64_t depth, uint
         int idx = depth - 1;
 
         BitSequence bit_seq(depth);
-        while(idx >= 0 && tmp_code){
-            bit_seq.set_bit(idx--, tmp_code & 0x1);
-            tmp_code >>= 1;
-        }
+        bit_seq.set_bits_from_num(0, curr_code);
+
         this->huff_codes[curr_head->data] = bit_seq;
     }
 

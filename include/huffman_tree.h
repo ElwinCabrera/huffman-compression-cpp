@@ -43,7 +43,10 @@ public:
     Node* build_huffman_tree();
     void recreate_huffman_tree(unordered_map<char, BitSequence> codes);
     void recreate_huff_tree_helper(Node *curr, char data, BitSequence bit_sequence, uint64_t bit_idx);
-    
+    uint8_t* decode_bit_seq(BitSequence bit_sequence);
+    void decode_bit_seq_helper(Node* curr, uint8_t *buff, BitSequence *bit_sequence);
+    int find_data_len_from_bit_seq(Node* curr, int count, BitSequence *bit_sequence);
+
     void print_tree(Node *curr_head);
     void free_tree(Node *curr_head);
 
