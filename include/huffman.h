@@ -3,9 +3,11 @@
 
 #include <iostream>
 #include <unordered_map>
-#include <map>
+//#include <map>
 #include <cstdint>
 #include <string>
+#include <tuple>
+
 
 
 #include "huffman_tree.h"
@@ -13,29 +15,28 @@
 
 //using namespace std;
 using std::string;
-using std::map;
+//using std::map;
 using std::unordered_map;
-using std::vector;
+//using std::vector;
 using std::cout;
 using std::endl;
 using std::to_string;
 using std::stoi;
+using std::tuple;
 
 class HuffmanCompress {
 public:
-    HuffmanCompress(string s);
-    //HuffmanCompress(char *data, size_t len);
     HuffmanCompress();
+    HuffmanCompress(string s);
+    HuffmanCompress(char *data);
     ~HuffmanCompress();
-    uint8_t* compress();
-    uint8_t* serialize_huff_codes();
-    unordered_map<char, BitSequence> deserialize_huff_codes(uint8_t *data);
-    void find_char_freq();
-    void print_map();
-    //string decompress(unordered_map<char, BitSequence> huff_codes); //testing decompres function
-    string decompress(uint8_t *data, int len); //real decompress function
-    BitSequence create_bit_seq(uint8_t *data, int length);
+    
+    uint8_t* compress(); // probably good idea to also return the length
+    //tuple<uint8_t*, size_t> compress(); // probably good idea to also return the length
+    uint8_t* decompress(uint8_t *data, int len);
     void print_stats();
+    
+
     HuffmanListTree get_huffman_list_tree() {return this->htree; }
     unordered_map<char, BitSequence> get_huffman_codes() { return this->huff_codes; }
 
@@ -46,14 +47,25 @@ public:
     }
 
 
-private:
+protected:
+    
+    shared_ptr<uint8_t> serialize_huff_codes();
+    unordered_map<char, BitSequence> deserialize_huff_codes(uint8_t *data);
+    shared_ptr<BitSequence> create_bit_seq(uint8_t *data, int length);
+    void find_char_freq();
+    void print_map();
+    
+
+
     string uncompressed_str;
     uint8_t *compressed_data;
-    BitSequence compressed_str_bitsequence;
-    //BitSequence huff_codes_bitsequence;
-    uint8_t *serialized_huff_codes;
+    uint8_t *uncompressed_data;
 
-    map<char, size_t> char_to_freq;
+    shared_ptr<BitSequence> compressed_str_bitsequence;
+    //BitSequence huff_codes_bitsequence;
+    shared_ptr<uint8_t> serialized_huff_codes;
+
+    unordered_map<char, size_t> char_to_freq;
     unordered_map<char, BitSequence> huff_codes;
 
     HuffmanListTree htree;

@@ -3,10 +3,10 @@
 
 #include <stdlib.h>
 #include <cstdio>
-#include <vector>
+//#include <vector>
 #include <unordered_map>
 //#include <map>
-#include <tuple>
+//#include <tuple>
 #include <cstdint>
 
 #include "bits.h"
@@ -43,7 +43,7 @@ public:
     Node* build_huffman_tree();
     void recreate_huffman_tree(unordered_map<char, BitSequence> codes);
     void recreate_huff_tree_helper(Node *curr, char data, BitSequence bit_sequence, uint64_t bit_idx);
-    uint8_t* decode_bit_seq(BitSequence bit_sequence);
+    uint8_t* decode_bit_seq(shared_ptr<BitSequence> bit_sequence);
     void decode_bit_seq_helper(Node* curr, uint8_t *buff, BitSequence *bit_sequence);
     int find_data_len_from_bit_seq(Node* curr, int count, BitSequence *bit_sequence);
 

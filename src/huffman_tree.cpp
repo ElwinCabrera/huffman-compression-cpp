@@ -22,7 +22,7 @@ HuffmanListTree::~HuffmanListTree(){
 }
 
 void  HuffmanListTree::add_to_list(char c, int weight){
-    Node *new_node = new Node(c, weight);
+    //Node *new_node = new Node(c, weight);
     this->insert_node_in_list(new Node(c, weight));
 }
 
@@ -121,7 +121,7 @@ void HuffmanListTree::print_list(){
 void HuffmanListTree::free_list(){
     while(this->head){
         Node *new_head = this->head->next_in_list;
-        free(this->head);
+        delete this->head;
         this->head = new_head;
     }
     this->head = nullptr;
@@ -183,33 +183,32 @@ void HuffmanListTree::recreate_huff_tree_helper(Node *curr, char data, BitSequen
         return;
     }
 
-    Node *n = new Node('\0', -1, true);
     if(!bit_set){
-        if(!(curr->left_tree)) curr->left_tree = n;
+        if(!(curr->left_tree)) curr->left_tree = new Node('\0', -1, true);
         this->recreate_huff_tree_helper(curr->left_tree, data, bit_sequence, --bit_idx);
     }
     if(bit_set){
-        if(!(curr->right_tree)) curr->right_tree = n;
+        if(!(curr->right_tree)) curr->right_tree = new Node('\0', -1, true);
         this->recreate_huff_tree_helper(curr->right_tree, data, bit_sequence, --bit_idx);
     }
 }
 
 
-uint8_t* HuffmanListTree::decode_bit_seq(BitSequence bit_sequence){
+uint8_t* HuffmanListTree::decode_bit_seq(shared_ptr<BitSequence> bit_sequence){
     uint8_t *data = nullptr;
 
     //there might be a better way of finding the length 
     //(we could use a 'string' instead of 'uint8_t*' which will dynamically allocates more space for us)
     //but for now this will do
-    bit_sequence.get_next_bit_start(0);
-    int data_len = this->find_data_len_from_bit_seq(this->head, 0, &bit_sequence);
+    bit_sequence->get_next_bit_start(0);
+    int data_len = this->find_data_len_from_bit_seq(this->head, 0, bit_sequence.get());
 
     data = (uint8_t*) malloc(data_len + 1);
-    memset(data, '\0', data_len);
+    memset(data, '\0', data_len + 1);
 
     uint8_t *data_ptr = data;
-    bit_sequence.get_next_bit_start(0);
-    this->decode_bit_seq_helper(this->head, data_ptr, &bit_sequence);
+    bit_sequence->get_next_bit_start(0);
+    this->decode_bit_seq_helper(this->head, data_ptr, bit_sequence.get());
 
     return data;
 }
@@ -270,7 +269,7 @@ void HuffmanListTree::free_tree(Node *curr_head){
     }
     free_tree(curr_head->left_tree);
     free_tree(curr_head->right_tree);
-    free(curr_head);
+    delete curr_head;
     curr_head = nullptr;
 }
 

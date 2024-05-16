@@ -1,12 +1,13 @@
 #include "../include/bits.h"
 
-BitSequence::BitSequence(size_t num_bits): next_bit_idx(-1){
+BitSequence::BitSequence(size_t num_bits): next_bit_idx(-1), next_byte_idx(-1){
     this->num_bits = num_bits;
     this->bytes_allocated = num_bits / BYTE_LEN;
     if(num_bits % BYTE_LEN != 0) this->bytes_allocated += 1;
     this->data = shared_ptr<uint8_t>((uint8_t*) malloc(this->bytes_allocated));
     memset(this->data.get(), '\0', this->bytes_allocated);
 }
+
 BitSequence::~BitSequence() {
     
 }
