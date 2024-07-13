@@ -50,7 +50,6 @@ private:
     shared_ptr<uint8_t> data;
     size_t num_bits; // this will prove to be useful when a huffman code is a sequence of zeros as it tells us the number of significant bits 
     size_t bytes_allocated;
-    //uint num_significant_bits;
     int next_bit_idx;
     int next_byte_idx;
     //bool reverse;
